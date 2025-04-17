@@ -132,9 +132,10 @@ async function getOrCreateAccount(context: any, address: string): Promise<Accoun
   let account = await context.Accounts.get({id: address})
   
   if (!account) {
+    // Initialize with current timestamp instead of 0n to enable point calculation
     account = {
       id: address,
-      lastSnapshotTimestamp: 0n
+      lastSnapshotTimestamp: BigInt(Date.now()) // Use current time instead of 0n
     }
     context.Accounts.set(account)
     // Add to registry
@@ -212,7 +213,7 @@ async function createAndSaveSnapshot(
   if (!account) {
     account = {
       id: accountId,
-      lastSnapshotTimestamp: 0n
+      lastSnapshotTimestamp: timestamp // Use current timestamp instead of 0n
     }
     context.Accounts.set(account)
   }
@@ -243,7 +244,13 @@ async function createAndSaveSnapshot(
         .times(BigDecimal(secondsSinceLastUpdate / 86400)) // Convert to days
     )
   } else {
+    // For first snapshot, initialize with points based on current balance
+    // This ensures that even first-time accounts start accumulating points
     snapshot.point = BigDecimal(0)
+    
+    // Optional: Give initial points based on starting balance
+    // Uncomment if you want to award initial points proportional to initial balance
+    // snapshot.point = balance.times(BigDecimal(1)); // Initial points = 1 point per token
   }
   
   context.Snapshot.set(snapshot)
