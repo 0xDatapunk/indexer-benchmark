@@ -28,43 +28,44 @@ LBTC.Transfer.handler(async ({ event, context }) => {
   };
 
   context.Transfer.set(entity);
+  
   // Process sender account
   if (from !== '0x0000000000000000000000000000000000000000') {
-      const fromAccount = await getOrCreateAccount(context,from)
-      const fromLastData = await getLastSnapshotData(context, from)
-      const fromBalance = BigDecimal((await getBalance(from)).toString())
-      
-      await createAndSaveSnapshot(
-          context,
-          from, 
-          blockTimestamp,
-          fromBalance,
-          fromLastData.point,
-          fromLastData.balance,
-          fromLastData.timestamp,
-          fromLastData.mintAmount
-      )
-
-      // Process receiver account
-      const toAccount = await getOrCreateAccount(context,from)
-      const toLastData = await getLastSnapshotData(context, to)
-      const toBalance = BigDecimal((await getBalance(to)).toString())
-      
-      const isMint = from === '0x0000000000000000000000000000000000000000'
-      
-      createAndSaveSnapshot(
-          context,
-          to,
-          blockTimestamp,
-          toBalance,
-          toLastData.point,
-          toLastData.balance,
-          toLastData.timestamp,
-          toLastData.mintAmount,
-          isMint,
-          value
-      )
+    const fromAccount = await getOrCreateAccount(context, from)
+    const fromLastData = await getLastSnapshotData(context, from)
+    const fromBalance = BigDecimal((await getBalance(from)).toString())
+    
+    await createAndSaveSnapshot(
+      context,
+      from, 
+      blockTimestamp,
+      fromBalance,
+      fromLastData.point,
+      fromLastData.balance,
+      fromLastData.timestamp,
+      fromLastData.mintAmount
+    )
   }
+
+  // Process receiver account - always process this regardless of sender
+  const toAccount = await getOrCreateAccount(context, to)
+  const toLastData = await getLastSnapshotData(context, to)
+  const toBalance = BigDecimal((await getBalance(to)).toString())
+  
+  const isMint = from === '0x0000000000000000000000000000000000000000'
+  
+  await createAndSaveSnapshot(
+    context,
+    to,
+    blockTimestamp,
+    toBalance,
+    toLastData.point,
+    toLastData.balance,
+    toLastData.timestamp,
+    toLastData.mintAmount,
+    isMint,
+    value
+  )
 
   const registry = await context.AccountRegistry.get("main")
   if (registry) {
@@ -245,12 +246,12 @@ async function createAndSaveSnapshot(
     )
   } else {
     // For first snapshot, initialize with points based on current balance
-    // This ensures that even first-time accounts start accumulating points
-    snapshot.point = BigDecimal(0)
+    // Always give initial points based on starting balance for first-time accounts
+    // This ensures all accounts have non-zero points from the beginning
+    snapshot.point = balance.times(BigDecimal(1)); // Initial points = 1 point per token
     
-    // Optional: Give initial points based on starting balance
-    // Uncomment if you want to award initial points proportional to initial balance
-    // snapshot.point = balance.times(BigDecimal(1)); // Initial points = 1 point per token
+    // Log that we're initializing points for a new account
+    context.log.info(`Initializing points for new account ${accountId}: ${snapshot.point}`)
   }
   
   context.Snapshot.set(snapshot)
