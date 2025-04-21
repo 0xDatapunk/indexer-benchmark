@@ -246,9 +246,7 @@ async function createAndSaveSnapshot(
     )
   } else {
     // For first snapshot, initialize with points based on current balance
-    // Always give initial points based on starting balance for first-time accounts
-    // This ensures all accounts have non-zero points from the beginning
-    snapshot.point = balance.times(BigDecimal(1)); // Initial points = 1 point per token
+    snapshot.point = balance.times(BigDecimal(0)); 
     
     // Log that we're initializing points for a new account
     context.log.info(`Initializing points for new account ${accountId}: ${snapshot.point}`)
